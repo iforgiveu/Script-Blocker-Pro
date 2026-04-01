@@ -7,11 +7,13 @@
 	//console.log(code.substring(0, 900));
     // ==================优先执行：保护F12可用====================
     (function () {
+		//return;
 		const antiF12Keywords = [
             'keyCode==123',
             'e.keyCode==123',
             'e.key==="F12"',
             'Key==123',
+			'F12',
             '.keyCode==123',
             'disableDevTools',
             'debugger',
@@ -21,8 +23,7 @@
 			'.event).keyCode||',
 			'(e.ctrlKey) && (e.keyCode',
 			'非法调试',
-            'setInterval(function(){(debug',
-            'setInterval(function() {(debug'
+            'setInterval(function(){(debug'
         ];
 	(()=>{//视口变化检测伪装，原生函数伪装
 	Object.defineProperty(window, 'outerWidth', {
@@ -38,13 +39,15 @@
 	//console.log('[脚本拦截器] 🔪 已移除 debugger 语句部分');
 	}}return originalFunctionConstructor.apply(this,args);};
 	
-	Object.defineProperty(Function.prototype.constructor,'toString',{value:function(){return'function Function() { [native code] }';}});
+	Object.defineProperty(Function.prototype, 'constructor',{configurable:false});
+	Object.defineProperty(Function.prototype.constructor,'toString',{value:function(){return'function Function() { [native code] }';},writable:false,configurable:false});
+	const originalToString=Function.prototype.toString;Function.prototype.toString=function(){if(this===Function.prototype.constructor){return'function Function() { [native code] }';}return originalToString.call(this);};
 	Object.defineProperty(window,'Firebug',{value:{chrome:{isInitialized:false}},writable:false,configurable:false});
 	Object.defineProperty(window.history,'go',{value:function(){},writable:false,configurable:false});
 	Object.defineProperty(window.history,'back',{value:function(){},writable:false,configurable:false});
 	Object.defineProperty(window,'close',{value:function(){},writable:false,configurable:false});
-	//Object.defineProperty(Date.prototype,'getTime',{value:function(){return 0;},writable:false,configurable:false});
-	})()
+	Object.defineProperty(window,'devtoolsFormatters',{value:0,writable:false,configurable:false});
+	})();
 
         // 1. 立即禁用现有的监听器
         document.onkeydown = null;
@@ -79,6 +82,7 @@
             set: function (value) {
                 if (value) {
                     const fnStr = value.toString();
+					//console.log('[onkeydown]',fnStr);
                     for (const kw of antiF12Keywords) {
                         if (fnStr.includes(kw)) {
                             console.log('[脚本拦截器] 🔒 阻止 document.onkeydown', kw, '\n', fnStr);
@@ -117,10 +121,10 @@
         const originalClearInterval = window.clearInterval;
 
     })();
-
+const currentUrla = window.location.href;
     // ==================== 正常的规则获取和初始化 ====================
-function waitForConfig(timeout=100){return new Promise((resolve,reject)=>{const selector='html > meta[name="script-blocker-status"]';const existing=document.querySelector(selector);if(existing){const status=existing.content;if(status==='ready'){resolve({status:'ready',meta:existing});return;}else if(status==='error'){reject({status:'error',message:'配置为空'});return;}}
-let timeoutId=setTimeout(()=>{observer.disconnect();reject({status:'timeout',message:'等待配置超时'});},timeout);const observer=new MutationObserver((mutations)=>{for(const mutation of mutations){for(const node of mutation.addedNodes){if(node.nodeName==='META'&&node.getAttribute('name')==='script-blocker-status'){const status=node.content;if(status==='ready'){observer.disconnect();clearTimeout(timeoutId);resolve({status:'ready',meta:node});return;}else if(status==='error'){observer.disconnect();clearTimeout(timeoutId);reject({status:'error',message:'配置为空'});return;}else{observer.disconnect();clearTimeout(timeoutId);reject({status:'unknown',message:`未知状态: ${status}`});return;}}}}});observer.observe(document.documentElement,{childList:true,subtree:false,attributes:true,attributeFilter:['content']});});}
+function waitForConfig(timeout=100){return new Promise((resolve,reject)=>{const selector='html > meta[name="script-blocker-status"]';const existing=document.querySelector(selector);if(existing){const status=existing.content;if(status==='ready'){resolve({status:'ready',meta:existing});return;}else if(status==='error'){reject({status:'error',message:currentUrla});return;}}
+let timeoutId=setTimeout(()=>{observer.disconnect();reject({status:'timeout',message:currentUrla});},timeout);const observer=new MutationObserver((mutations)=>{for(const mutation of mutations){for(const node of mutation.addedNodes){if(node.nodeName==='META'&&node.getAttribute('name')==='script-blocker-status'){const status=node.content;if(status==='ready'){observer.disconnect();clearTimeout(timeoutId);resolve({status:'ready',meta:node});return;}else if(status==='error'){observer.disconnect();clearTimeout(timeoutId);reject({status:'error',message:currentUrla});return;}else{observer.disconnect();clearTimeout(timeoutId);reject({status:'unknown',message:currentUrla});return;}}}}});observer.observe(document.documentElement,{childList:true,subtree:false,attributes:true,attributeFilter:['content']});});}
     // 从 meta 标签获取规则和白名单
     (async function() {
 	let quit
@@ -731,6 +735,7 @@ function decodeString(str) {
 }
 	// ==================== 7. eval ====================
     (()=>{
+	//return;
 	let evalwhitelist=["map.baidu.com"]
 	if (evalwhitelist.some(host => currentHost === host))return;
 	let evaldeblacklist=["window",'Window','self.window','window ',' window'];
@@ -739,6 +744,7 @@ function decodeString(str) {
         //console.trace('[脚本拦截器] 🧠eval类型',typeof code,'\n',code);
         if (typeof code === 'string') {
             let coded = decodeString(code)
+			//if(/\bdebugger\b/.test(coded)){code=code.replace(/\bdebugger\b/g,';');coded=coded.replace(/\bdebugger\b/g,';');console.log('[eval执行]:已移除debugger关键字：',coded)}
 			if (evaldeblacklist.some(host => coded === host)){//完整匹配到任意一个则拦截
 				logBlock('eval', coded, code, 'eval执行(字符串)');
                     return;}
@@ -748,7 +754,7 @@ function decodeString(str) {
                     return;
                 }
             }
-        }
+        };
         if (typeof code === 'function') {
             const funcStr = code.toString();
 			//console.log('[eval]',funcStr);
@@ -772,9 +778,18 @@ function decodeString(str) {
 	(function () {
 		if (inSecondaryWhitelist)return; 
 		console.log('[脚本拦截器] 💦 部署 Function 拦截器');
-		const proxyFunction = function (...args) {
+			const proxyFunction = function (...args) {
 			const code = args[args.length - 1] || '';
+			
+				//console.log('[脚本拦截器] 💦 Function 拦截：',code,'\n',args);
 				if (typeof code === 'string') {
+					const coded = args.map(String).join(' ');
+					const isStringPatching = /["']bugger["']/i.test(coded); // 
+					const isNestedFunction = /(?:new\s+)?Function\s*\(/i.test(coded); //
+					if (isStringPatching||isNestedFunction) {
+						//console.log('[脚本拦截器]Function:',coded,performance.now());
+						//logBlock('Function',coded.substring(0,30), args, 'new Function构造函数:疑似套娃拼接 debugger');
+						return function () {};}
 					for (const kw of keywordsToBlock) {
 						if (code.includes(kw)) {
 							logBlock('Function', kw, code, 'new Function构造函数');
@@ -801,13 +816,16 @@ function decodeString(str) {
 	
 
     // ==================== 9. setTimeout ====================
+	let showTimeout = 0;
     (()=>{
 	console.log('[脚本拦截器] 🍛 部署 setTimeout 拦截器');
     window.setTimeout = function (handler, timeout, ...args) {
-        if (typeof handler === 'string') {
+        //const timerIded = originalsetTimeout.apply(this, [handler, timeout, ...args]);
+		if (typeof handler === 'string') {
             for (const kw of keywordsToBlock) {
                 if (handler.includes(kw)) {
-                    logBlock('setTimeout', kw, handler, '字符串形式setTimeout');
+                    //console.log(`[setTimeout] 拦截新增 ID: ${timerIded}，倒计时:${timeout}`);
+					logBlock('setTimeout', kw, handler, '字符串形式setTimeout');
                     return 0;
                 }
             }
@@ -815,117 +833,238 @@ function decodeString(str) {
 
         if (typeof handler === 'function') {
 			const handlerStr = handler.toString();
-			//console.trace(handlerStr,timeout)
+			if(showTimeout)console.trace('[setTimeout]:',handlerStr,timeout);
 /* 			if (timeout>=10000){
 			logBlock('setTimeout', timeout, handlerStr, '等待时间过长');
                     return 0;} */
 			
             let defaultbl=['detectLoop()','404','devtool','502','location.href="about:blank"',"location.href='about:blank'",
-			'baidu.com','{return t.apply(this,s)}catch(e){throw e','!e||e&&!1!==e.deep','setInterval(function()','setInterval(()=>']
-			let whitel=['devtools&&','.emit("init",']
+			/['"]\w['"],\s*['"]\w['"]\)\s*\)\s*\)\s*,/i,
+			/(?:eval|Function)\s*\(\s*(?:['"][^'"]*?['"]\s*\+?\s*){2,}/i,
+			/(?:clear|disable|override)\s*\(\s*(?:console|log|debug|devtool)/i,
+			'concat(encodeURIComponent',
+			'{return t.apply(this,s)}catch(e){throw e',
+			//'!e||e&&!1!==e.deep',
+			'setInterval(function()','setInterval(()=>',
+			'baidu.com'];
+			let whitel=['devtools&&','.emit("init",'];
 			let isnormal = (whitel.every(kw=>handlerStr.includes(kw))); 
 			//console.log('[setTimeout]:',handlerStr,timeout);
 			const keywordsToBlocks = [...new Set([...defaultbl, ...keywordsToBlock])];
 			for (let kw of keywordsToBlocks) {
                 if (isnormal)break;
-				if (handlerStr.includes(kw)) {
-                    logBlock('setTimeout', kw, handlerStr, '函数形式setTimeout');
+				let isMatch = false;
+						if (kw instanceof RegExp) {
+							isMatch = kw.test(handlerStr);
+						} else {
+							isMatch = handlerStr.includes(kw);
+						}
+				if (isMatch) {
+					logBlock('setTimeout', kw.toString(), handlerStr, '函数形式setTimeout');
                     return 0;
                 }
             }
         }
-
+		//activeTimeout++;
+		//const timerIded = originalSetTimeout.call(this, handler, timeout, ...args);
+		//console.log(`[setTimeout] 新增 ID: ${timerId}，倒计时：${timeout} 已添加计数:${activeTimeout}\n`, handler);
         return originalSetTimeout.call(this, handler, timeout, ...args);
     }; })();
 
     // ==================== 10. setInterval====================
-    (() => {
-        console.log('[脚本拦截器] ⏱️ 部署 setInterval 拦截器', performance.now());
-        // 存储定时器状态：{ hits: 慢执行次数, lastTime: 上次执行时间 }
-        
-		const timerStates = new Map();
-        // 配置参数
-        const SLOW_THRESHOLD = 100;      // 超过多少毫秒算“慢执行”
-        const MAX_SLOW_HITS = 2;         // 连续多少次慢执行触发清理
-        window.setInterval = function (handler, interval, ...args) {            
-            // --- 第一阶段：静态特征扫描 --- 
-            if (typeof handler === 'string') {
-                for (const kw of keywordsToBlock) {
-                    if (handler.includes(kw)) {
-                        logBlock('setInterval', kw, handler, '字符串形式恶意代码');
-                        return 0;
-                    }
+let activeIntervals = 0;
+let showsetIn = 1;
+const SET_INTERVAL_CONFIG = {
+    enableSlowMonitor: true,   // 是否开启【智能拦截】(卡顿检测)
+    enableSpamFilter: true,    // 是否开启【频控拦截】(连续添加3次拉黑)
+    slowThreshold: 100,        // 慢执行阈值(毫秒)
+    maxSlowHits: 2,            // 连续慢执行几次触发清理
+    spamTriggerCount: 3,       // 连续添加相同函数几次触发拉黑
+    blacklistDuration: 60 * 60 * 1000 // 拉黑时长：1小时(毫秒)
+};
+
+(() => {
+    console.log('[脚本拦截器] ⏱️ 部署 setInterval 拦截器', performance.now());
+    
+    const timerStates = new Map(); // 存储定时器卡顿状态
+    const spamTracker = new Map(); // 存储函数连续添加追踪
+    const spamBlacklist = new Map(); // 存储被拉黑的函数 (过期时间)
+
+    // ---------------- 模块一：频控拦截 (连续添加拉黑) ----------------
+    const SpamFilterModule = {
+        check(handler) {
+            if (!SET_INTERVAL_CONFIG.enableSpamFilter || typeof handler !== 'function') return false;
+            
+            const handlerStr = handler.toString();
+            
+            // 1. 检查是否在黑名单中及是否过期
+            if (spamBlacklist.has(handlerStr)) {
+                if (Date.now() < spamBlacklist.get(handlerStr)) {
+                    return true; // 仍在黑名单中，直接拦截
+                } else {
+                    spamBlacklist.delete(handlerStr); // 黑名单过期，移除
                 }
             }
-            if (typeof handler === 'function') {
-                const handlerStr = handler.toString();
-                let defaultbl = ['setTimeout(function(', 'setTimeout(()=>', 'debugger', 'devtool', 'clearLog', 'console.clear', 'if (!(e.isSuspend||'];
-				
-				//对部分网站放行部分关键词
-				let timeoutwhitelist=["map.baidu.com"]
-				if (timeoutwhitelist.some(host => currentHost === host)){
-				let toRemove=['setTimeout(function(', 'setTimeout(()=>'];//移除setTimeout关键词的检测
-				defaultbl = defaultbl.filter(item => !toRemove.includes(item));};
-				
-				// 合并默认黑名单与用户自定义黑名单
-                const keywordsToBlocks = [...new Set([...defaultbl, ...keywordsToBlock])];
-				//console.log('[setInterval]:',handlerStr,interval)};
-                for (const kw of keywordsToBlocks) {
-					if (handlerStr.includes(kw)) {
-                        logBlock('setInterval', kw, handlerStr, '函数形式恶意代码');
-                        return 0;
-                    }
+
+            // 2. 记录连续添加次数
+            const count = (spamTracker.get(handlerStr) || 0) + 1;
+            spamTracker.set(handlerStr, count);
+
+            // 3. 判断是否达到拉黑条件
+            if (count >= SET_INTERVAL_CONFIG.spamTriggerCount) {
+                spamBlacklist.set(handlerStr, Date.now() + SET_INTERVAL_CONFIG.blacklistDuration);
+                spamTracker.delete(handlerStr); // 触发后清空计数器
+                console.warn(`[频控拦截] 🚫 检测到恶意循环注册，函数已列入黑名单 ${SET_INTERVAL_CONFIG.blacklistDuration/1000} 秒`);
+                this.cleanHistoricalTimers(handlerStr);
+                return true;
+            }
+
+            // 4. 如果执行成功（没有被拦截），5秒后重置该函数的连续计数（避免正常业务逻辑误伤）
+            setTimeout(() => {
+                if (spamTracker.get(handlerStr) === count) {
+                    spamTracker.delete(handlerStr);
                 }
-            };
-            // --- 第二阶段：动态性能监控包装 ---
-            const wrappedHandler = function() {
+            }, 5000);
+
+            return false;
+        },
+
+        // 清理历史同类定时器
+        cleanHistoricalTimers(handlerStr) {
+            for (const [id, state] of timerStates.entries()) {
+                // 注意：这里对比的是被包装前的原始 handler 字符串
+                if (state.originalHandlerStr === handlerStr) {
+                    clearInterval(id);
+                    timerStates.delete(id);
+                    activeIntervals--;
+                    console.log(`[频控拦截] 🧹 清理历史同类定时器 ID: ${id}`);
+                }
+            }
+        }
+    };
+
+    // ---------------- 模块二：智能拦截 (卡顿检测) ----------------
+    const SlowMonitorModule = {
+        wrapHandler(handler, timerId, originalHandlerStr) {
+            if (!SET_INTERVAL_CONFIG.enableSlowMonitor) return handler;
+
+            return function(...args) {
                 const startTime = performance.now();
-                // 执行原始函数
                 try {
                     if (typeof handler === 'function') {
-                        handler.apply(this, arguments);
+                        handler.apply(this, args);
                     } else if (typeof handler === 'string') {
-                        // 字符串形式的 handler 通常是 eval，较少见但也兼容
                         eval(handler);
                     }
                 } catch (e) {
                     console.error('[脚本拦截器] 定时器执行出错:', e);
                 }
+                
                 const duration = performance.now() - startTime;
-                // 检查是否超时（模拟控制台警告）
-                if (duration > SLOW_THRESHOLD) {
-                    console.warn(`[智能拦截] ⚠️ 定时器耗时过长: ${duration.toFixed(2)}ms (阈值: ${SLOW_THRESHOLD}ms)`);
-                    // 获取或初始化状态
-                    if (!timerStates.has(timerId)) {
-                        timerStates.set(timerId, { hits: 0 });
-                    }
+                
+                if (duration > SET_INTERVAL_CONFIG.slowThreshold) {
+                    console.warn(`[智能拦截] ⚠️ 定时器耗时过长: ${duration.toFixed(2)}ms (阈值: ${SET_INTERVAL_CONFIG.slowThreshold}ms)`);
                     const state = timerStates.get(timerId);
-                    
-                    state.hits++; // 累计慢执行次数
-                    console.log(`[智能拦截] 当前累计卡顿次数: ${state.hits}/${MAX_SLOW_HITS}`);
-
-                    // 如果连续卡顿次数达标，执行清除
-                    if (state.hits >= MAX_SLOW_HITS) {
-                        console.log(`[智能拦截] 🔥 连续 ${state.hits} 次卡顿，强制清除定时器 ID: ${timerId}`);
-                        clearInterval(timerId);
-                        timerStates.delete(timerId);
+                    if (state) {
+                        state.hits++;
+                        console.log(`[智能拦截] 当前累计卡顿次数: ${state.hits}/${SET_INTERVAL_CONFIG.maxSlowHits}`);
+                        
+                        if (state.hits >= SET_INTERVAL_CONFIG.maxSlowHits) {
+                            console.log(`[智能拦截] 🔥 连续 ${state.hits} 次卡顿，强制清除定时器 ID: ${timerId}`);
+                            clearInterval(timerId);
+                            timerStates.delete(timerId);
+                            activeIntervals--;
+                        }
                     }
                 } else {
-                    // 如果这次执行很快，重置计数器（避免偶尔卡顿导致的误杀）
-                    if (timerStates.has(timerId)) {
-                        timerStates.get(timerId).hits = 0;
+                    // 执行快，重置卡顿计数
+                    const state = timerStates.get(timerId);
+                    if (state && state.hits > 0) {
+                        state.hits = 0;
                     }
                 }
             };
-            // 注册包装后的函数
-            const timerId = originalSetInterval.call(this, wrappedHandler, interval, ...args);
-            // 初始化状态记录
-            timerStates.set(timerId, { hits: 0 });
+        }
+    };
+
+    // ---------------- 核心重写逻辑 ----------------
+    window.setInterval = function (handler, interval, ...args) {
+        // --- 第一阶段：静态特征扫描 ---
+        if (typeof handler === 'string') {
+            for (const kw of keywordsToBlock) {
+                if (handler.includes(kw)) {
+                    logBlock('setInterval', kw, handler, '字符串形式恶意代码');
+                    return 0;
+                }
+            }
+        }
+        
+        if (typeof handler === 'function') {
+            const handlerStr = handler.toString();
+            
+            // ... [保留你原有的 hasObfuscatedVars / hasDangerKeywords 等静态混淆检测代码，此处省略以保持简洁，直接粘贴在下面完整版中] ...
+            
+            // 【新增】接入频控拦截模块
+            if (SpamFilterModule.check(handler)) {
+                //logBlock('setInterval', '频繁添加同一函数', handlerStr, '触发频控黑名单');
+                return 0;
+            }
+const hasObfuscatedVars=/_0x[a-f0-9]{4,}/i.test(handlerStr);const hasDangerKeywords=/debugger|(?<![a-z])Function\s*\(/i.test(handlerStr);const hasMaliciousStructure=/return\s+(_0x|function\s*\()/i.test(handlerStr);const isExtremelyLong=handlerStr.length>1000;let isMalicious=false;let reason='';if(hasDangerKeywords&&hasObfuscatedVars){isMalicious=true;reason='混淆代码含高危关键词';}else if(hasObfuscatedVars&&hasMaliciousStructure){isMalicious=true;reason='混淆代码含套娃结构';}else if(hasObfuscatedVars&&isExtremelyLong){isMalicious=true;reason='混淆代码体积异常';}
+if(isMalicious){
+logBlock('setInterval',reason,handlerStr,'函数形式恶意混淆代码');return 0;}
+
+            let defaultbl = [/\w+\[[\s\S]*?\]\([\s\S]*?\w+\[[\s\S]*?\]\([\s\S]*?\w+\[[\s\S]*?\]\(/i, /(?:eval|Function)\s*\(\s*['"]debugger['"]\s*\)/i, /new\s+Array\s*\(\s*\d+\s*\)\s*\.\s*fill\s*\(|(?:1e[4-9]|[1-9]\d{4,})\s*\)/, /(?:\!\[\]|\[\])[\s\S]*?\+|\[\s*\[\s*\[\s*\]\s*\]/, "'d','e'),'b'),'u'),'g'),'g'",'setTimeout(function(', 'setTimeout(()=>', 'debugger', 'devtool', 'clearLog', 'console.clear', 'if (!(e.isSuspend||'];
+            let timeoutwhitelist=["map.baidu.com"];
+            if (timeoutwhitelist.some(host => currentHost === host)){
+                let toRemove=['setTimeout(function(', 'setTimeout(()=>'];
+                defaultbl = defaultbl.filter(item => !toRemove.includes(item));
+            };
+            const keywordsToBlocks = [...new Set([...defaultbl, ...keywordsToBlock])];
+            
+            for (const kw of keywordsToBlocks) {
+                let isMatch = false;
+                if (kw instanceof RegExp) { isMatch = kw.test(handlerStr); } 
+                else { isMatch = handlerStr.includes(kw); }
+                if (isMatch) {
+                    logBlock('setInterval', kw.toString(), handlerStr, '函数形式恶意代码');
+                    return 0;
+                }
+            }
+        };
+
+        // --- 第二阶段：动态包装与注册 ---
+        const originalHandlerStr = typeof handler === 'function' ? handler.toString() : String(handler);
+        
+        // 【接入智能拦截模块】包装 Handler
+        const wrappedHandler = SlowMonitorModule.wrapHandler(handler, null, originalHandlerStr);
+
+        // 真正注册到浏览器
+        const timerId = originalSetInterval.call(this, wrappedHandler, interval, ...args);
+        
+        // 初始化状态，并补全 wrappedHandler 内部需要的 timerId
+        timerStates.set(timerId, { hits: 0, originalHandlerStr: originalHandlerStr });
+        if (SET_INTERVAL_CONFIG.enableSlowMonitor) {
+            // 利用闭包将真实的 timerId 绑定到包装函数上，解决原代码的隐患
+            wrappedHandler.__boundTimerId = timerId; 
+            // 重新包装一次以注入正确的 ID（如果智能拦截开启的话）
+            const finalHandler = SlowMonitorModule.wrapHandler(handler, timerId, originalHandlerStr);
+            clearInterval(timerId); // 清除刚才没绑ID的
+            const finalTimerId = originalSetInterval.call(this, finalHandler, interval, ...args);
+            timerStates.set(finalTimerId, { hits: 0, originalHandlerStr: originalHandlerStr });
+            activeIntervals++;
+            if(showsetIn) console.log(`[SetInterval监控] 新增 ID: ${finalTimerId}，间隔：${interval} 已添加计数:${activeIntervals}\n`, handler);
+            return finalTimerId;
+        } else {
+            activeIntervals++;
+            if(showsetIn) console.log(`[SetInterval监控] 新增 ID: ${timerId}，间隔：${interval} 已添加计数:${activeIntervals}\n`, handler);
             return timerId;
-        }; for (let i = 1; i < 100; i++) {clearInterval(i);}
-    })();
+        }
+    }; 
+    
+    for (let i = 1; i < 100; i++) { clearInterval(i); }
+})();
     // ==================== script标签清理 ====================
-    console.log('[脚本拦截器] 🧹 部署script标签清理\n(只是清理标签，一般来说该项没法直接拦截标签内的js执行)');
+    /* console.log('[脚本拦截器] 🧹 部署script标签清理\n(只是清理标签，一般来说该项没法直接拦截标签内的js执行)');
     // 多次清理，确保捕获延迟加载的脚本
     const cleanTimes = [0, 200, 400];
     cleanTimes.forEach(timeout => {
@@ -958,7 +1097,7 @@ function decodeString(str) {
                 }
             });
         }, timeout);
-    });
+    }); */
 	
     console.log('[脚本拦截器] ✅ 所有拦截器部署完成，共 ' + keywordsToBlock.length + ' 个关键词',performance.now());
 })();

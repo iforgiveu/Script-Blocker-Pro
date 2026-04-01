@@ -1,15 +1,8 @@
 // content.js - 在 ISOLATED world 运行，负责注入真正的拦截代码
 	console.log('[Content] 已启动于',window.location.href,performance.now());
 	
-	Promise.resolve().then(()=>{const lockscript=document.createElement('script');lockscript.src=chrome.runtime.getURL('lockconsole.js');lockscript.onload=()=>lockscript.remove();document.documentElement.appendChild(lockscript);});
+/* Promise.resolve().then(()=>{const lockScript=document.createElement('script');lockScript.src=chrome.runtime.getURL('lockconsole.js');lockScript.onload=()=>lockScript.remove();document.documentElement.appendChild(lockScript);const injectScript=document.createElement('script');injectScript.src=chrome.runtime.getURL('inject.js');injectScript.onload=()=>injectScript.remove();document.documentElement.appendChild(injectScript);}); */
 	const root = document.documentElement;
-    // inject.js 也注入到 html 下
-	Promise.resolve().then(() => {
-		const script = document.createElement('script');
-        script.src = chrome.runtime.getURL('inject.js');;
-        script.onload = () => script.remove();
-        root.appendChild(script); 
-    });
 	    
 	const metaTemplate = {
 		rules: Object.assign(document.createElement('meta'), { name: 'script-blocker-rules' }),
@@ -88,7 +81,6 @@ function getConfigWithRetry(retries = 5,
 
 // 开始获取配置
 getConfigWithRetry(1);
-
 // 监听配置更新
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.type === 'UPDATE_CONFIG') {

@@ -25,6 +25,16 @@
       "run_at": "document_start",
       "world": "ISOLATED",
       "all_frames": true
+    },
+	{
+      "matches": ["<all_urls>"],
+	  "exclude_matches": ["*://*.bing.com/search*",
+	  "*://*/*runner.html*",
+	  "*://*/*index.m3u8*"],
+      "js": [ "lockconsole.js","inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+	  "all_frames": true
     }
   ],
   "action": {
