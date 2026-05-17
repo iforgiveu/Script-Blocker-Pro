@@ -1,6 +1,6 @@
 {
   "version": "1.1",
-  "exportTime": "2026-04-01T12:05:09.089Z",
+  "exportTime": "2026-05-16T22:29:59.411Z",
   "rules": [
     {
       "enabled": true,
@@ -45,7 +45,7 @@
       "matchType": "simple",
       "name": "方块小广告拦截",
       "sitePatterns": [
-        "*yh*/*",
+        "*yh*",
         "*yinghua*",
         "*dm",
         "*yinhua*",
@@ -68,7 +68,10 @@
         "landchina.com",
         "cih-index.com",
         "baidu.com",
-        "ladakh-tour.com"
+        "ladakh-tour.com",
+        "cslevi.com",
+        "jslsdc.com",
+        "neherh.com"
       ]
     },
     {
@@ -81,7 +84,6 @@
         "testDebuger",
         "debugger",
         "debuger",
-        "about:blank",
         "template/wandou/statics/app/service-worker.js",
         "alert(\"你知道的太多了！\");return false",
         "你非要调试的话试试",
@@ -90,15 +92,19 @@
         "都说了F12被禁用",
         "F12jump.js",
         "responseDecoder[_0x",
-        "files/crypto-js.js",
         "disable-devtool/404",
-        "console.log=function(){}"
+        "console.log=function(){}",
+        "disable_f12",
+        "disable_devtools",
+        "disable_right_click",
+        "nocopy-script.js"
       ],
       "matchType": "simple",
       "name": "阻止禁止f12",
       "sitePatterns": [
         "*yinhua*",
         "*dm",
+        "cebbank.com",
         "*acpc*",
         "*ixigua*",
         "*.lccmr.com",
@@ -129,7 +135,14 @@
         "nmpa.gov.cn",
         "jscq.com.cn",
         "ejy365.com",
-        "xhdnwct.com"
+        "xhdnwct.com",
+        "cebwm.com",
+        "spiderbuf.cn",
+        "www.vcg.com",
+        "xueqiu.com",
+        "captcha.wangluozhe.com",
+        "get.ssl.moe",
+        "nsthwj."
       ]
     }
   ],
@@ -139,11 +152,17 @@
     "honeyhunterworld.com",
     "lf-normal-gr-sourcecdn.bytegecko.com",
     "urlsec.qq.com",
-    "deepseek.com"
+    "deepseek.com",
+    "cloudflare.com",
+    "bilibili",
+    "www.cih-index.com",
+    "?alichlgref=https%"
   ],
   "secondaryWhitelist": [
     "douyin",
-    "bilibili",
-    ".feishu.cn"
+    ".feishu.cn",
+    "pan.baidu.com",
+    "tieba.baidu.com",
+    "get.ssl.moe"
   ]
 }
