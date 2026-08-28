@@ -1,5 +1,5 @@
 // -*- coding: utf-8 -*-
-// inject.js - 脚本拦截器核心
+// inject.js - 脚本拦截器核心//jsd
 (function () {
     'use strict';
 	let href=window.location.href;
@@ -13,12 +13,14 @@
 		//return;
 		
 		const antiF12Keywords = [
-            'keyCode==123',
-            'e.keyCode==123',
+            //'keyCode==123',
+            '==123',
+            '123==',
+            //'e.keyCode==123',
             'e.key==="F12"',
-            'Key==123',
+            //'Key==123',
 			'F12',
-            '.keyCode==123',
+            //'.keyCode==123',
             'disableDevTools',
             'debugger',
 			'touch"!==t.pointerType',
@@ -36,16 +38,28 @@
 		'contextmenu':[
 		/['"](ault|event|Default)['"]\]/i,/return\s+false/,/return\s+false/,
         /^return e\.preventDefault\(\)$/,
+        /^function\(.{3,6}return e\.preventDefault\(\).{0,2}\}$/,
+		///^(?:function\(.{3,6})?return e\.preventDefault\(\)(?:.{0,2}\})?$/,
         /^e\.preventDefault\(\)$/,
-        /function\s*\(\s*(?:_0x\w+|\w+)\s*\)\s*\{\s*\1\[.*?\]\s*\(\s*\)/,]};
+        /\{\s*e\.preventDefault\(\)\s*;\s*\}/,
+        /function\s*\(\s*(?:_0x\w+|\w+)\s*\)\s*\{\s*\1\[.*?\]\s*\(\s*\)/,],
+		'mousewheel':[
+		/=!(0|1)\b/g,
+		// /.+/,
+		],
+		};
 	(()=>{const whitelista=["player/?url"];
 	if (whitelista.some(host => href.includes(host))) return;
 	const originalFunctionConstructor=Function.prototype.constructor;
-	Function.prototype.constructor=function(...args){if(args.length===0){return originalFunctionConstructor.apply(this,args);}const lastArg=args[args.length-1];if(typeof lastArg==='string'){if(lastArg.trim()==='debugger'){
+	Function.prototype.constructor=function(...args){if(args.length===0){return originalFunctionConstructor.apply(this,args);}const lastArg=args[args.length-1];
+	//console.log('[脚本拦截器] 🔪',args);
+	if(typeof lastArg==='string'){if(lastArg.trim()==='debugger'){
 	//console.trace('[脚本拦截器] 🚫 拦截纯 debugger 函数，直接返回空函数');
-	return function(){};}if(/\bdebugger\b/.test(lastArg)){args[args.length-1]=lastArg.replace(/\bdebugger\b/g,';');
+	return function(){};}
+	if(/\bdebugger\b/.test(lastArg)){args[args.length-1]=lastArg.replace(/\bdebugger\b/g,'');
 	//console.log('[脚本拦截器] 🔪 已切除混杂代码中的 debugger',args);
-	}}return originalFunctionConstructor.apply(this,args);};
+	}}
+	return originalFunctionConstructor.apply(this,args);};
 	Object.defineProperty(Function.prototype.constructor,'prototype',{value:Function.prototype,/*writable:false,*/configurable:false,enumerable:false});
 	})();
 	(()=>{//视口变化检测伪装，原生函数伪装
@@ -91,7 +105,7 @@
 		//console.log('[脚本拦截器] 🔒 排查 ：', type, '\n', listenerStr);
 		let matchedRule="";for(const kw of antiF12Keywords){if(listenerStr.includes(kw)){isBlocked=true;matchedRule=`明文关键词:${kw}`;break;}}
 		if(!isBlocked){
-		const rulesForType=preciseRules[type];for(const regex of rulesForType){if(regex.test(listenerStr)){isBlocked=true;matchedRule=`正则:${regex}`;break;}}}
+		try{const rulesForType=preciseRules[type];for(const regex of rulesForType){if(regex.test(listenerStr)){isBlocked=true;matchedRule=`正则:${regex}`;break;}}}catch (e) {}}
 		if(type==='contextmenu'){const listenerStr=listener?listener.toString():"";if(listenerStr.length<120&&/_0x[a-f0-9]+\(/i.test(listenerStr)){isBlocked=true;matchedRule="右键极简混淆特征";}}
 		if(isBlocked){console.log(`[脚本拦截器] 🔪 阻止 addEventListener:【 ${type}  触发规则: ${matchedRule}】\n代码: ${listenerStr}`);return;}}
 		return originalAddEventListener.call(this,type,listener,options);};
@@ -135,9 +149,6 @@
             },
 			configurable: false
         });
-(function(){const noop=()=>false;function sanitizeDisableDevtoolExport(value){if(!value||(typeof value!=='object'&&typeof value!=='function')){return createDisableDevtoolStub();}
-const target=value;const patches={isSuspend:false,isRunning:false,isDevToolOpened:false,ondevtoolopen:null,ondevtoolclose:null,stop:noop,toggle:noop,clear:noop,isOpen:noop,isDevToolOpen:noop,};Object.keys(patches).forEach((key)=>{try{target[key]=patches[key];}catch(_err){}});return target;}
-function createDisableDevtoolStub(){const stub=function(){return stub;};return sanitizeDisableDevtoolExport(stub);}function installDisableDevtoolStub(){let currentValue=createDisableDevtoolStub();Object.defineProperty(window,'DisableDevtool',{configurable:true,enumerable:true,get(){return currentValue;},set(value){currentValue=sanitizeDisableDevtoolExport(value);console.log('[Anti-DisableDevtool] 已拦截并接管 window.DisableDevtool');},});}installDisableDevtoolStub();})();
 
 
     })();
@@ -595,12 +606,12 @@ let timeoutId=setTimeout(()=>{observer.disconnect();reject({status:'timeout',mes
 	//return//废弃
 	if(inSecondaryWhitelist)return;
 	console.log('[脚本拦截器] 🍧 部署 createElement 拦截器');
-	document.createElement=function(tagName){const element=originalCreateElement.call(document,tagName);if(tagName&&tagName.toLowerCase()==='script'){Object.defineProperty(element,'src',{set:function(value){for(const kw of keywordsToBlock){if(value&&value.includes(kw)){logBlock('createElement',kw,value,'createElement(Src拦截)');return;}}
+	document.createElement=function(tagName){const element=originalCreateElement.call(document,tagName);if(tagName&&tagName.toLowerCase()==='script'){Object.defineProperty(element,'src',{set:function(value){let srcValue = value.toString();for(const kw of keywordsToBlock){if(value&&srcValue.includes(kw)){logBlock('createElement',kw,value,'createElement(Src拦截)');return;}}
 	element.setAttribute('src',value);},get:function(){return element.getAttribute('src');},configurable:true});let currentText='';Object.defineProperty(element,'text',{set:function(code){for(const kw of keywordsToBlock){if(code&&code.includes(kw)){logBlock('createElement',kw,code,'createElement(Text拦截)');return;}}
 	currentText=code;element.textContent=code;},get:function(){return currentText;},configurable:true});}
 	return element;};
 
-	document.createElementNS=function(namespaceURI,qualifiedName,options){const element=originalCreateElementNS.call(this,namespaceURI,qualifiedName,options);if(qualifiedName&&qualifiedName.toLowerCase()==='script'){Object.defineProperty(element,'src',{set:function(value){for(const kw of keywordsToBlock){if(value&&value.includes(kw)){logBlock('createElementNS',kw,value,'createElementNS(Src拦截)');return;}}
+	document.createElementNS=function(namespaceURI,qualifiedName,options){const element=originalCreateElementNS.call(this,namespaceURI,qualifiedName,options);if(qualifiedName&&qualifiedName.toLowerCase()==='script'){Object.defineProperty(element,'src',{set:function(value){let srcValue = value.toString();for(const kw of keywordsToBlock){if(value&&srcValue.includes(kw)){logBlock('createElementNS',kw,value,'createElementNS(Src拦截)');return;}}
 	element.setAttribute('src',value);},get:function(){return element.getAttribute('src');},configurable:true});let currentText='';Object.defineProperty(element,'text',{set:function(code){for(const kw of keywordsToBlock){if(code&&code.includes(kw)){logBlock('createElementNS',kw,code,'createElementNS(Text拦截)');return;}}
 	currentText=code;element.textContent=code;},get:function(){return currentText;},configurable:true});}
 	return element;};
@@ -611,12 +622,12 @@ let timeoutId=setTimeout(()=>{observer.disconnect();reject({status:'timeout',mes
 
 
     // ==================== 2. MutationObserver ====================
-/*     (()=>{
-	return; */
+     (()=>{
+	if(currentHost.includes('yichengwlkj.com'))return;
 	console.log('[脚本拦截器] 👁️ 部署 MutationObserver 拦截器');
 	
 	const observer = new MutationObserver(function (mutations) {
-	
+		
         mutations.forEach(function (mutation) {
             mutation.addedNodes.forEach(function (node) {
                 if (processedNodes.has(node))
@@ -689,7 +700,7 @@ let timeoutId=setTimeout(()=>{observer.disconnect();reject({status:'timeout',mes
     observer.observe(document.documentElement, {
         childList: true,
         subtree: true
-    }); //})();
+    }); })();
 
     // ==================== 3. appendChild ====================
 
@@ -768,10 +779,12 @@ let timeoutId=setTimeout(()=>{observer.disconnect();reject({status:'timeout',mes
 
     // ==================== 6. document.write ====================
     console.log('[脚本拦截器] ✍️ 部署 document.write 拦截器');
+	let write1=0;
     document.write = function (str) {
-        if (typeof str === 'string') {
+        //return;
+		if (typeof str === 'string') {
             let dwdefaultbl=['调试']
-			//console.trace('[write检查]：', str);
+			if(write1)console.trace('[write检查]：', str);
 			const keywordsToBlockss = [...new Set([...dwdefaultbl, ...keywordsToBlock])];
 			for (const kw of keywordsToBlockss) {
                 if (str.includes(kw) /* && str.includes('<script') */) {
@@ -784,7 +797,7 @@ let timeoutId=setTimeout(()=>{observer.disconnect();reject({status:'timeout',mes
     };
 
     document.writeln = function (str) {
-        console.trace('[writeln检查]：', str);
+        if(write1)console.trace('[writeln检查]：', str);
         if (typeof str === 'string') {
             for (const kw of keywordsToBlock) {
                 if (str.includes(kw)&& str.includes('<script')) {
@@ -821,7 +834,8 @@ function decodeString(str) {
 			//if(/\bdebugger\b/.test(coded)&&ruiShuReg.test(coded)){code=code.replace(debugReg,'');coded=coded.replace(/\bdebugger\b/,'');console.log('[eval执行]: 已移除瑞树debugger关键字：',coded);return originalEval.call(this,code);}//不要使用这个，瑞树的疑似会自检测是否成功反调试/被篡改并上报，只切除debugger的话会被拉黑后续不再返回数据
 			if (evaldeblacklist.some(host => coded === host)){//完整匹配到任意一个则拦截
 				logBlock('eval', coded, code, 'eval执行(字符串)');
-                    return;}
+                    return
+					;}
 			for (const kw of keywordsToBlock) {
 				if (coded.includes(kw)) {
                     logBlock('eval', kw, code, 'eval执行(字符串)');
@@ -858,10 +872,11 @@ function decodeString(str) {
 				if (typeof code === 'string') {
 					const coded = args.map(String).join(' ');
 					const isStringPatching = /["']bugger["']/i.test(coded); // 
-					const isNestedFunction = /(?:new\s+)?Function\s*\(/i.test(coded); //
+					const isNestedFunction = /(?:new\s+)?\bFunction\s*\(/.test(coded);
+
 					if (isStringPatching||isNestedFunction) {
 						//console.log('[脚本拦截器]Function:',isStringPatching,isNestedFunction);
-						logBlock('Function',coded.substring(0,30), args, 'new Function构造函数:疑似套娃拼接 debugger');
+						//logBlock('Function',coded.substring(0,30), args, 'new Function构造函数:疑似套娃拼接 debugger');
 						//return function () {};	
 						return ajoke;	
 						}
@@ -871,7 +886,7 @@ function decodeString(str) {
 						if (code.includes(kw)) {
 							logBlock('Function', kw, code, 'new Function构造函数');
 							//return function () {};
-							return ajoke
+							return ajoke;
 							}}}
 			// 放行
 			//console.log('[脚本拦截器] 💦 Function 拦截：无害：',args);
@@ -924,11 +939,16 @@ function decodeString(str) {
 			'concat(encodeURIComponent',
 			//'{return t.apply(this,s)}catch(e){throw e',
 			//'!e||e&&!1!==e.deep',
-			'setInterval(function()','setInterval(()=>',
+			'setInterval(function(','setInterval(()=>',
 			'baidu.com'];
 			let whitel=['devtools&&','.emit("init",'];
-			let isnormal = (whitel.every(kw=>handlerStr.includes(kw))); 
+			let isnormal = handlerStr.includes('vuejs/vue-devtools')||(whitel.every(kw=>handlerStr.includes(kw))); 
 			//console.log('[setTimeout]:',handlerStr,timeout);
+				/*let Intervalwhitelist=["tieba.baidu.com"];
+					if (Intervalwhitelist.some(host => currentHost === host)){
+						let toRemove=['setInterval(function(', 'setInterval(()=>'];
+						defaultbl = defaultbl.filter(item => !toRemove.includes(item));
+					};*/
 			const keywordsToBlocks = [...new Set([...defaultbl, ...keywordsToBlock])];
 			for (let kw of keywordsToBlocks) {
                 if (isnormal)break;
@@ -1049,7 +1069,7 @@ const SET_INTERVAL_CONFIG = {
     window.setInterval = new Proxy(originalSetInterval, {
         apply(target, thisArg, argumentsList) {
             let [handler, interval, ...args] = argumentsList;
-
+			if(href.includes('98dou.cn'))return 0;//
             // --- 1. 静态特征扫描 ---
             if (typeof handler === 'string') {
                 for (const kw of keywordsToBlock) {
@@ -1068,11 +1088,13 @@ const SET_INTERVAL_CONFIG = {
                 const hasObfuscatedVars=/_0x[a-f0-9]{4,}/i.test(handlerStr);
                 const hasDangerKeywords=/debugger|(?<![a-z])Function\s*\(/i.test(handlerStr);
                 const hasMaliciousStructure=/return\s+(_0x|function\s*\()/i.test(handlerStr);
+                const hasdetected=/^(?=.*\bdetected\b)(?=.*\bonOpen\b\(\)).*$/i.test(handlerStr);
                 const isExtremelyLong=handlerStr.length>1000;
                 let isMalicious=false;let reason='';
                 if(hasDangerKeywords&&hasObfuscatedVars){isMalicious=true;reason='混淆代码含高危关键词';}
                 else if(hasObfuscatedVars&&hasMaliciousStructure){isMalicious=true;reason='混淆代码含套娃结构';}
                 else if(hasObfuscatedVars&&isExtremelyLong){isMalicious=true;reason='混淆代码体积异常';}
+                else if(hasdetected){isMalicious=true;reason='DevToolsDetector代码';}
                 if(isMalicious){logBlock('setInterval',reason,handlerStr,'函数形式恶意混淆代码');return 0;}
 
                 let defaultbl = [/\w+\[[\s\S]*?\]\([\s\S]*?\w+\[[\s\S]*?\]\([\s\S]*?\w+\[[\s\S]*?\]\(/i, /(?:eval|Function)\s*\(\s*['"]debugger['"]\s*\)/i, /new\s+Array\s*\(\s*\d+\s*\)\s*\.\s*fill\s*\(|(?:1e[4-9]|[1-9]\d{4,})\s*\)/,
@@ -1083,6 +1105,7 @@ const SET_INTERVAL_CONFIG = {
 				'window.outerWidth-window.innerWidth',
 				'window.outerHeight-window.innerHeight',
 				'=(new Date)-origTime',
+				'checkPerformance.bind',
 				'if (!(e.isSuspend||'];
                 let timeoutwhitelist=["map.baidu.com"];
                 if (timeoutwhitelist.some(host => currentHost === host)){
@@ -1129,6 +1152,7 @@ const SET_INTERVAL_CONFIG = {
 const OriginalIframe=window.HTMLIFrameElement;if(OriginalIframe){
 const iframeblockedRules=[
 'https://game.weixin.qq.com/',//前缀
+'https://report.error-report.com/modal?eventId=',//前缀
 /*/^https:\/\/.*\.weixin\.qq\.com\//,//正则
 (url)=>url.includes('adsystem'),//包含*/
 ];function shouldBlockUrl(url){if(typeof url!=='string')return false;return iframeblockedRules.some(rule=>{if(typeof rule==='string'){return url.startsWith(rule);}else if(rule instanceof RegExp){return rule.test(url);}else if(typeof rule==='function'){try{return rule(url);}catch(e){console.error('[脚本拦截器] 规则函数执行出错:',e);return false;}}return false;});}Object.defineProperty(OriginalIframe.prototype,'src',{get:function(){return this.getAttribute('src');},set:function(value){if(shouldBlockUrl(value)){console.warn('[脚本拦截器] 🚫 阻止 🍵iframe.src 设置:',value);return;}this.setAttribute('src',value);},configurable:true});const originalSetAttribute=OriginalIframe.prototype.setAttribute;OriginalIframe.prototype.setAttribute=function(name,value){if(name==='src'&&shouldBlockUrl(value)){console.warn('[脚本拦截器] 🚫 阻止 🍵iframe.setAttribute(src)设置:',value);return;}return originalSetAttribute.call(this,name,value);};}
