@@ -80,6 +80,7 @@ if (whitelist.some(host => hosted.includes(host))) return;
 (function(){'use strict';console.log('[antidev模块拦截] 🔅部署 webpack拦截器',performance.now(),'\n【目前可能无法阻止网站反调试模块失败后的刷屏干扰】');
 const TARGET_ID='Aso0';
 const ABSOLUTE_KEYWORDS=['DevtoolsDetector','window.devtoolsFormatters','performanceChecker','workerPerformanceChecker','debuggerChecker',
+'forbidDevelope',
 //'window.console.log=function(){}'
 //'.destroy = de()'
 ];
@@ -103,8 +104,6 @@ return originalPush.apply(this,args);};
 //if(hosted=='talent.baidu.com'){window.webpackJsonp=[];Object.defineProperty(window.webpackJsonp,'push',{configurable:true,get(){return originalPush;},set:function (){return true}});}
 })();
 })();
-
-/* (function(){'use strict';const NativeError=window.Error;window.Error=function(...args){const errorObj=new NativeError(...args);const originalStack=errorObj.stack;Object.defineProperty(errorObj,'stack',{get:function(){return"\n 🔒 Stack trace is protected by UserScript.\n    at Anonymous (protected:1:1)\n";},set:function(value){return;},configurable:true,enumerable:true});return errorObj;};window.Error.prototype=NativeError.prototype;window.Error.length=NativeError.length;const errorTypes=['TypeError','ReferenceError','SyntaxError','RangeError'];errorTypes.forEach(type=>{if(window[type]){const NativeType=window[type];window[type]=function(...args){const errorObj=new NativeType(...args);Object.defineProperty(errorObj,'stack',{get:function(){return"[redacted stack trace]";},set:function(){},configurable:true});return errorObj;};window[type].prototype=NativeType.prototype;}});console.log('[脚本拦截器] ✅ 堆栈混淆模块已加载');})(); *//* 混淆堆栈信息避免某些网站的某些反调试相关检测*/
 
 //阻止利用iframe获取原生console
 (()=>{
