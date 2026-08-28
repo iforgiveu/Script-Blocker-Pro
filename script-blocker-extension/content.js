@@ -1,4 +1,4 @@
-// content.js - 在 ISOLATED world 运行，负责注入真正的拦截代码
+// content.js - 在 ISOLATED world 运行，负责注入真正的拦截代码//jsd
 	console.log('[Content] 已启动于',window.location.href,performance.now());
 	
 /* Promise.resolve().then(()=>{const lockScript=document.createElement('script');lockScript.src=chrome.runtime.getURL('lockconsole.js');lockScript.onload=()=>lockScript.remove();document.documentElement.appendChild(lockScript);const injectScript=document.createElement('script');injectScript.src=chrome.runtime.getURL('inject.js');injectScript.onload=()=>injectScript.remove();document.documentElement.appendChild(injectScript);}); */
